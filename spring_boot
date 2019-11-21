@@ -1,0 +1,482 @@
+Spring Boot Features
+	- Auto Configuration - no manual configuration required like dispatcherServlet, static resource mappings
+	- Dependency Management - different libraries are grouped in different POMs
+	- Advanced External Configuration - bean properties configured through application.properties without touching java or xml
+	- Production Support - health check & monitoring using Spring Actuators
+		○ We can use prometheus for pod/app monitoring
+			§ https://blog.kubernauts.io/https-blog-kubernauts-io-monitoring-java-spring-boot-applications-with-prometheus-part-1-c0512f2acd7b
+			§ It internally uses Spring actuator for application monitoring by exposing the endpoint of /promethus. Note: actuators uses /metrics for monitoring
+			§ @EnablePrometheusEndpoint, @EnableSpringBootMetricsCollector
+			§ JMX Exporter for easy configuration
+				□ https://blog.kubernauts.io/https-blog-kubernauts-io-monitoring-java-spring-boot-applications-with-prometheus-part-2-b883063486b5
+	- Runnable Jars - using embedded tomcat jars
+	
+Spring cloud frameworks
+https://www.javainuse.com/spring/spring-cloud-interview-questions
+
+Spring boot with microservices using kubernetes
+
+https://www.baeldung.com/spring-boot
+Spring boot start - how to build a simple app - https://www.baeldung.com/spring-boot-start
+
+@configurationproperties - https://www.baeldung.com/configuration-properties-in-spring-boot
+	To load the application.properties entries into the beans
+	
+Feign client - advanced rest client - abstraction over REST-based calls
+	Feign internally uses Ribbon for client-side load balancing
+	Feign as client - https://dzone.com/articles/microservices-communication-feign-as-rest-client
+	https://www.javainuse.com/spring/spring-cloud-netflix-feign-tutorial
+
+Zuul and Ribbon integration
+https://stackoverflow.com/questions/43538030/zuul-and-ribbon-integration
+
+java -Dspring.profiles.active=development -jar yourApplication.jar
+
+Main Gateways available:
+	· Spring Cloud Gateway - 
+		○ https://www.baeldung.com/spring-cloud-gateway
+		<dependency>
+		    <groupId>org.springframework.cloud</groupId>
+		    <artifactId>spring-cloud-starter-gateway</artifactId>
+		</dependency>
+		○ Gateway config properties:
+		spring:
+		  cloud:
+		    gateway:
+		      routes:
+		      - id: path_route
+		        uri: http://baeldung.com
+		        predicates:
+		        - Path=/articles/{articleId}
+		○ Route
+		○ Predicate
+		○ Filter
+		○ https://medium.com/@niral22/spring-cloud-gateway-tutorial-5311ddd59816
+		
+		
+	· Zuul - Gateway for reverse proxy, load balancing - server side load balancer 
+Zuul is a JVM based router and server side load balancer by Netflix.
+	zuul:
+	  routes:
+	    foos:
+	      path: /foos/**
+	      url: http://localhost:8081/spring-zuul-foos-resource/foos
+	Annotation : @EnableZuulProxy
+	DiscoveryClient discoveryClient;
+	discoveryClient.getInstances("employee-zuul-service").get(0);
+	
+	Links:
+	https://www.javainuse.com/spring/spring-cloud-netflix-zuul-tutorial
+	https://stackabuse.com/spring-cloud-routing-with-zuul-and-gateway/
+	https://www.baeldung.com/spring-rest-with-zuul-proxy
+	
+	
+	
+Ribbon - Client Side load balancing
+	- Ribbon fetches the list of pods/instances running  for that particular services from the service registry
+	- It finds the which pod/instances has more bandwidth to accept the request
+	- https://www.javainuse.com/spring/spring_ribbon
+	- LoadBalancerClient.choose("employee-producer");
+
+Kubernetes dependency
+
+<dependency>
+<groupId>org.springframework.cloud</groupId>
+<artifactId>spring-cloud-starter-kubernetes</artifactId>
+<version>0.3.0.BUILD-SNAPSHOT</version>
+</dependency>
+
+Service Discovery
+Service can be used to access the application outside the Kubernetes cluster or for inter-service communication inside a cluster.
+apiVersion: v1
+kind: Service
+metadata:
+  name: employee
+  labels:
+    app: employee
+spec:
+  ports:
+  - port: 8080
+    protocol: TCP
+  selector:
+    app: employee
+
+@EnableDiscoveryClient - has to be enabled in the started file of spring boot application
+
+Add entry in the application.properties 
+	- Give the same name of the service as the application name
+	spring:
+	  application:
+	    name: employee
+	
+Ribbon & feign client for inter service communication 
+
+<dependency>
+<groupId>org.springframework.cloud</groupId>
+<artifactId>spring-cloud-starter-kubernetes-ribbon</artifactId>
+<version>0.3.0.BUILD-SNAPSHOT</version>
+</dependency>
+<dependency>
+<groupId>org.springframework.cloud</groupId>
+<artifactId>spring-cloud-starter-openfeign</artifactId>
+</dependency>
+
+Microservices using kuberentes - https://dzone.com/articles/quick-guide-to-microservices-with-kubernetes-sprin
+
+@EnableDiscoveryClient
+@EnableFeignClients
+@EnableMongoRepositories
+@EnableCassandraProperties(basePkg = "org.com.*")
+
+Creating ingress as gateway to expose these services to outside world - 
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: gateway-ingress
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  backend:
+    serviceName: default-http-backend
+    servicePort: 80
+  rules:
+  - host: microservices.info - context name to be called from external APIs
+    http:
+      port: 8080 -- to invoked from the external APIs
+      paths:
+      - path: /employee
+        backend:
+          serviceName: employee
+          servicePort: 8080
+      - path: /department
+        backend:
+          serviceName: department
+          servicePort: 8080
+      - path: /organization
+        backend:
+          serviceName: organization
+          servicePort: 8080
+
+Annotations:
+
+SpringBootMainApplication
+@SpringBootApplication - @Configuration, @EnableAutoConfiguration, @ComponentScan
+
+Public static void main(String args[]) {
+	SpringApplication.run(springmainapplication.class, args);
+
+@PropertySource(value="file:/path/application.properties") - to locate property sources from external path, not from internal path of war file
+
+@EnableScheduling - Cron schedulers
+@Scheduled(cron = "10 10 20 * * *") - Cron expressions
+
+@EnableAsync - ThreadPoolTaskExecutor
+@Async("jobExecuter")
+Func method
+
+Creating ThreadPoolTaskExecutor for Async threads to run
+Ref: https://medium.com/trendyol-tech/spring-boot-async-executor-management-with-threadpooltaskexecutor-f493903617d
+@Bean(name = "jobExecuter")
+public ThreadPoolTaskExecutor jobExecutor()
+
+@EnableTask - to run batch jobs process using spring cloud task
+
+@EventListener(ApplicationReadyEvent.class) - triggered when the application starts
+
+@Configuration
+@Bean - to create the beans and get managed by spring
+@ConditionalOnProperty(prefix = "spring", name = "example.values")
+@EnableSwagger2
+
+To load the property file entries into the spring beans
+@PropertySource("classpath:app.properties")
+@ConfigurationProperties(prefix="mail") - java config file
+@EnableConfigurationProperties(configprop.class)
+
+@Value("${MANAGEMENT_DATASOURCE_USERNAME}") - to load the value from property
+
+@ComponentScan(basePackages = "com.nokia.managementserver") - to scan all the @Component based files
+
+@EntityScan(basePackages = { "com.nokia.managementserver" }) - to scan the entities
+
+@EnableCaching
+
+@requestmapping(value='contextpath/name', method="post", header='application/xml', consumes='multipart/form-data', produces='application/json')
+
+Link - https://stackoverflow.com/questions/30923249/spring-4-requestmapping-consumes-vs-headers
+
+@requestmapping(value='/path/{grpId}', consumes='application/json', produces='application/json', method=post") {
+Public void addData(@pathVariable(value="grpId") String grpId, @RequestBody Group grp) {}
+
+@Postmapping
+@Getmapping
+
+@requestPart MulipartFile file, @requestPart String id - incase if the api consumes multipart form-data, then we have to use requestPart
+'multipart/form-data' request - receive the data using @requestParam , @requestPart
+
+/context/{id}?data=val - to receive the query params
+@requesmapping(value="/context/{id}", produces="application/json", method="GET") {
+Public String getData(@pathVariable String id, @RequestParam("data") String val) {
+Return gson.toJson(Bean Obj);
+
+Gson.toJson(Bean Obj) - to convert the bean object to json
+Gson.fromJson(json_val_string, Staff.class) - to convert the stringified json to Bean Object
+
+@requestbody BeanObject - to send bean as part of request body in the form of JSON/XML to be internally parsed as Java Object
+@responsebody BeanObject - to send bean as part of Http response body in the form of JSON/XML
+
+@EnableJpaRepositories(entitymanagerFactoryRef="", transactionMangerRef="", basePackages = {org.package}) - add this annotation in springbootmainapplicationclass
+
+@Primary
+https://www.baeldung.com/spring-primary
+@Component
+Interface implements 2 sub-class
+Add one annotation as @primary
+
+@Autowire this component in another bean using Dependency Injection(DI)
+Primary related bean will get injected dynamically
+
+@Autowired - by name, by type, by constructor
+@Qualifier("man")
+
+@ControllerAdvice , @ExceptionHandler
+
+ApplicationContext vs Bean Factory difference
+
+https://javarevisited.blogspot.com/2012/11/difference-between-beanfactory-vs-applicationcontext-spring-framework.html
+ApplicationContext 	Bean Factory
+getBean	getBean
+Creates singleton bean for all	Wont create any beans until the invocation of getBean("na")
+Registered beans
+ApplicationContext implements BeanFactory	
+Adopts internationalization	
+Beans which are registered as listener	
+Ability to publish events to listener beans
+
+Spring Retry
+@EnableRetry - in root of the application
+@Retryable - in each methods
+	· @Retryable(classes = {SQLException.class}, maxAttempts = 2, backOff = @BackOff(delay = 5000))
+	· Retry will be happening for given attempts only if the function generates SQLException only
+@Recover - to be handled by the exception which the retry generates
+	· @Recover
+	· Void recover(SQLException e, String sql) {…}
+• RetryTemplate 
+	· With backoffpolicy and retrypolicy
+	· Links:
+	https://howtodoinjava.com/spring-boot2/spring-retry-module/
+	https://www.baeldung.com/spring-retry
+	
+Hystrix - circuit breaker
+https://howtodoinjava.com/spring-cloud/spring-hystrix-circuit-breaker-tutorial/
+https://spring.io/blog/2019/04/16/introducing-spring-cloud-circuit-breaker
+https://www.javainuse.com/spring/spring_hystrix
+https://javainuse.com/spring/spring_hystrix_circuitbreaker
+
+Add dependency
+Org.springframework.cloud
+Spring-cloud-starter-hystrix
+
+Add annotations in root application
+@EnableCircuitBreaker
+@EnableHystrix
+@EnableHystrixDashboard
+
+
+Add annotation in controller on each controller method
+@HystrixCommand(fallbackmethod= "getdatafallback")
+
+Public Employee getDataFallback() {}
+
+
+DatasourceConfig Class
+@EnableTransactionManagement
+@ComponentScan
+
+Creating Datasource
+
+Public DataSource createDatasource() {
+
+Datasource.url:url
+Username:name
+Password:pass
+Max_pool_size:100
+Config = new hikariConfig(props)
+Return new hikariDatasource(config)
+}
+
+Creating jdbctemplate, namedjdbctemplate
+
+Public jdbctemplate getjdbcTemplate() {
+	Temp = new jdbcTemplate(new Datasource());
+Namedjdbctemplate() method
+
+Creating entityManager
+LocalEntityManagerFactoryBean em = new LocalEntityManagerFactoryBean ();
+Em.setDataSource(datasource)
+Em.setPackagesToScan(new String[] {"com.nokia"})
+Em.setJpaVendorAdaptor()
+Entitymanager properties:
+	Hibernete dialect - mysqlDialect - dialect represents which database to be used for hibernete
+	Connection_pool_size
+	Use_query_cache:true
+	Second_level_cache:true
+	Jdbc_batch_size:100
+	Order_inserts:true
+	Order_updates:true
+
+Em.setJpaPropertyMap(properties)
+
+Creating transactionManager
+PlatformTransactionManager
+Jpatransactionmanager manager = new JpaTransactionManager();
+Manager.setEntityManagerFactory(entityManagerFactory().getObject());
+
+Steps for datasource configuration
+Note: add enabletransactionmanagement annotation in config class
+	1. Creating datasource by passing database credentials
+	2. Create jdbc template
+	3. Create entity manager by passing dialect-mysql,postgresql dialects, datasource ref, second level cache, query cache, batch sizw
+	4. Create transaction manager by passing entity manager
+
+Creating cachemanager
+Ehcachemanager(new ClassPathResource(ecache.xml)
+
+Cassandra Configuration
+
+@Table
+@Column
+@PrimaryKeyColumn(name="", ordinal=0, type=PrimaryKeyType.Partitioned/Clustered)
+
+CasandraConfig.java
+@EnableCassandraProperties(basePackages="org.nokia")
+Creating session
+	Inputs:
+		Cluster
+
+Creating cassandratemplate based on session
+
+Link - https://www.baeldung.com/spring-data-cassandra-tutorial
+
+Entity
+
+@Entity
+@Table(name="group")
+
+@Id
+@SequenceGenerator(name, sequenceName)
+@GeneratedValue(strategy = AUTO, generator="sequenceGenerator") 
+@Column(name="id")
+
+@Column(name="std", unique=true, nullable=false)
+@Transient
+	
+
+@Repository
+@Transactional
+Interface groupRepository implements CrudRepository<Group, String> {
+
+@Query("Select * from data where col1=:qid and col2=:qid2")
+List<Group> findbyGroupIdAndData(@Param("qid") String qid, @Param("qid2") String qid2);
+
+How to resolve LazyInitializationException
+	1) Hibernate.initialize(user.getCreatedJobs())
+	2) @OnetoMany(mappedby="creator")
+		a. To @OneToMany(fetch = FetchType.EAGER, mappedby="creator")
+	3) JOIN FETCH
+	4) DTO Projection
+	
+FetchType.EAGER, FetchType.LAZY
+https://vladmihalcea.com/the-best-way-to-handle-the-lazyinitializationexception/
+
+Spring Transactional Attributes:
+http://www.studytrails.com/frameworks/spring/spring-transaction-attributes/
+	• Propagation
+		○ Propogation_required
+		○ Propogation_requires_new
+		○ Propogation_supports
+		○ Propogation_nested
+	• Isolation
+	• Read_only
+	• Rollback_rules
+	• Time_out
+	
+
+RestTemplate Bean creation
+	• SSLContext
+	• SSLConnectionSocketFactory
+	• HttpClient
+	• ClientHttpRequestFactory = new HttpComponentsClientHttpRequestFactory(httpClient);
+	• Resttemplate = new RestTemplate(clietnHttpRequestFactory);
+
+
+Invoking restTemplate to call other microservices
+	• HttpHeaders header
+	• Headers.add(authorisation)
+	• Headers.setContentType(MediaType.APPLICATION_JSON)
+	• HttpEntity(header)
+	• restTemplate.exchange(url, HTTPMethod.POST, httpEntity, APIReponse.class);
+
+
+• Resttemplate.postForObject()
+• Resttemplate.postForEntity()
+• Ref: https://www.baeldung.com/spring-resttemplate-post-json
+
+backing services
+https://www.nginx.com/blog/microservices-reference-architecture-nginx-twelve-factor-app/
+https://12factor.net/processes
+https://spring.io/blog/2015/01/27/12-factor-app-style-backing-services-with-spring-and-cloud-foundry
+
+
+12 factors for microservices
+
+	1) One codebase per services, 
+	2) Explicitly declare and isolate dependencies between services by binding dependency manager with the os platform/distribution itself
+	3) Store the configuration as the environmental variable
+	4) Treat backing services as attached resources, because it should be loosely coupled and provide more flexibility to the developers
+	5) Strictly separate build, run stages
+	6) Execute the app in one or more stateless instances and share the stateful data between instances using backing services
+	7) Each service manage its own data
+	8) Each services can be scaled out independently
+	9) Maximize robustness by making instances of services disposable with fast startup, shutdown. This can be easily achieved using docker containers. We can store the session data in backing services incase the container went down
+	10) Treat logs as event streams
+	11) Run admin and management task as one-off process
+	12) Keep development, staging & production as similar as possible to reduce the bugs that can arised in different environments
+
+Rolling deployment, canary deployment
+https://www.youtube.com/watch?v=YQLOcjvbo9s
+
+Istio- service mesh
+https://www.digitalocean.com/community/tutorials/how-to-install-and-use-istio-with-kubernetes
+
+Spring cloud sleuth- for logging and zipkin for visualization
+https://spring.io/projects/spring-cloud-sleuth
+https://dzone.com/articles/monitoring-microservices-with-spring-cloud-sleuth
+
+Spring Cloud Modules:
+
+	• Spring Cloud Eureka - Service Registry
+		○ https://www.baeldung.com/spring-cloud-netflix-eureka
+	• Gateways:
+		○ Spring Cloud Gateway
+			§ Combination of Spring Boot2, Spring 5, Spring Reactive components
+			§ Uses netty server
+			§ Configuration related to Route URI, Predicate, Filters etc…
+			§ Non-Blocking
+		○ Spring Cloud Zuul - Server Side load balancer & reverse proxy
+			§ Zuul 1.x - Blocking
+			§ Zuul 2.x with Reactive - Non Blocking
+	• Spring Cloud Feign & Ribbon 
+		○ Feign - Alternative for RestTemplate
+		○ Ribbon - client side load balancer
+	• Spring Cloud Hystrix
+		○ Circuit breaker
+	• Spring Cloud Data Flow
+		○ Microservices based Streaming and Batch data processing(ETL)
+			§ Spring Cloud Stream - stream processing using messaging components like kafka, rabbitmq
+			§ Spring Cloud Task - @EnableTask - to run batch jobs process using spring cloud task
+		○ It provides tool to create complex topologies for streaming and batch data pipelines
+	• Spring Cloud config Server
+	• Spring Cloud Sleuth & Zipkin
+		○ Sleuth - similar to logstash to collect the distributed tracing of logs
+		○ Zipkin - server for visualization of logs
